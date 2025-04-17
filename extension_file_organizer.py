@@ -12,32 +12,37 @@ Author: Kris Armstrong
 from __future__ import annotations
 import argparse
 import logging
+import logging.handlers
 import os
 import shutil
 import sys
 from datetime import datetime
 from typing import Optional
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 
 def setup_logging(verbose: bool, logfile: Optional[str] = None) -> None:
     """
-    Configure logging output to console and optional logfile.
+    Configure logging with console and optional rotating file handler.
 
     Args:
-        verbose (bool): If True, set log level to DEBUG; else INFO.
-        logfile (Optional[str]): Optional path to a file for logging output.
+        verbose: If True, set log level to DEBUG; else INFO.
+        logfile: Optional path for logging output with rotation.
     """
     logger = logging.getLogger()
     level = logging.DEBUG if verbose else logging.INFO
     logger.setLevel(level)
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(level)
-    handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
-    logger.addHandler(handler)
+
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(level)
+    console_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+    logger.handlers = [console_handler]
+
     if logfile:
-        file_handler = logging.FileHandler(logfile)
+        file_handler = logging.handlers.RotatingFileHandler(
+            logfile, maxBytes=10*1024*1024, backupCount=5
+        )
         file_handler.setLevel(level)
         file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
         logger.addHandler(file_handler)
@@ -48,10 +53,10 @@ def get_year_month_prefix(path: str) -> str:
     Return a 'YYYY-MM' prefix based on file's last modification time.
 
     Args:
-        path (str): Path to the file.
+        path: Path to the file.
 
     Returns:
-        str: Formatted 'YYYY-MM'.
+        Formatted 'YYYY-MM' string.
     """
     try:
         timestamp = os.path.getmtime(path)
@@ -63,11 +68,10 @@ def get_year_month_prefix(path: str) -> str:
 
 def organize_by_extension(source_dir: str) -> None:
     """
-    Walk the source directory, group files by extension into subfolders,
-    and rename each file with a year-month prefix.
+    Group files by extension into subfolders and rename with year-month prefix.
 
     Args:
-        source_dir (str): Path to the directory to organize.
+        source_dir: Path to the directory to organize.
 
     Raises:
         FileNotFoundError: If source_dir does not exist or is not a directory.
@@ -98,18 +102,19 @@ def parse_arguments() -> argparse.Namespace:
     Parse command-line arguments.
 
     Returns:
-        argparse.Namespace: Parsed arguments.
+        Parsed arguments.
     """
     parser = argparse.ArgumentParser(
-        description="Extension File Organizer: group files by extension and rename with date prefix"
+        description="Extension File Organizer: group files by extension and rename with date prefix",
+        formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument(
         "--source", "-s", required=True,
         help="Source directory to organize"
     )
     parser.add_argument(
-        "--logfile", "-l", default=None,
-        help="Optional logfile path for runtime logs"
+        "--logfile", "-l",
+        help="Log to file (rotates at 10MB)"
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true",
@@ -131,7 +136,7 @@ def main() -> None:
     try:
         organize_by_extension(args.source)
     except KeyboardInterrupt:
-        logging.info("Operation cancelled by user.")
+        logging.info("Received KeyboardInterrupt, shutting down gracefully...")
         sys.exit(0)
     except Exception as e:
         logging.critical("Fatal error: %s", e)

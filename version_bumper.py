@@ -30,22 +30,18 @@ import logging
 
 __version__ = "1.0.0"
 
-
 def setup_logging(verbose: bool):
     """Configure logging output."""
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(level=level, format='%(asctime)s [%(levelname)s] %(message)s')
 
-
 def find_files(root, exclude_dirs):
     """Yield Python files under root, skipping exclude_dirs."""
     for dirpath, dirnames, filenames in os.walk(root):
-        # Modify dirnames in-place to skip exclude dirs
         dirnames[:] = [d for d in dirnames if d not in exclude_dirs]
         for f in filenames:
             if f.endswith('.py'):
                 yield os.path.join(dirpath, f)
-
 
 def bump_version_in_file(path, pattern, bump_type, dry_run):
     """Read file, bump version per pattern, and write back if changed."""
@@ -69,7 +65,6 @@ def bump_version_in_file(path, pattern, bump_type, dry_run):
             open(path, 'w').write(new_text)
     return new_ver if new_text != text else None
 
-
 def git_commit_and_tag(project, version, message, dry_run):
     """Git add, commit, and tag the new version."""
     cmds = [
@@ -84,7 +79,6 @@ def git_commit_and_tag(project, version, message, dry_run):
     logging.debug("Running %s", tag_cmd)
     if not dry_run:
         subprocess.run(tag_cmd, cwd=project, check=True)
-
 
 def main():
     parser = argparse.ArgumentParser(description="Version Bumper - SemVer helper")
@@ -124,3 +118,4 @@ def main():
         logging.info("No version string found or no change needed.")
 
 if __name__ == '__main__':
+    main()
